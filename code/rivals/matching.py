@@ -52,8 +52,11 @@ def normalize_name(name: str) -> str:
     - Split into words, drop the ones in settings.FILLER_WORDS, and join the rest
       with single spaces.
     """
-    # TODO: your code here
-    pass
+    text = unicodedata.normalize("NFKD", name).encode("ascii", "ignore").decode()
+    text = text.lower() #lowercase
+    text = re.sub(r"[^a-z0-9 ]+", " ", text) #replace anything not a letter/digit
+    words = [w for w in text.split() if w not in FILLER_WORDS] #drop filler words
+    return " ".join(words) 
 
 
 def top_candidates(name: str, choices: list[str], limit: int = 3) -> list[tuple]:
@@ -75,8 +78,11 @@ def top_candidates(name: str, choices: list[str], limit: int = 3) -> list[tuple]
       tuples, best first. The index says which original choice it was.
     - Return `(choices[index], round(score))` for each.
     """
-    # TODO: your code here
-    pass
+    clean_name = normalize_name(name)
+    clean_choices = [normalize_name(c) for c in choices]
+    matches = process.extract(clean_name, clean_choices,
+                              scorer=fuzz.token_sort_ratio, limit=limit)
+    return [(choices[index], round(score)) for match, score, index in matches]
 
 
 def match_band(score: float) -> str:
@@ -91,8 +97,11 @@ def match_band(score: float) -> str:
     - Two `if`s and a `return`: compare `score` to `AUTO_MATCH` first, then
       `REVIEW` (both imported from settings — don't type 90 and 70).
     """
-    # TODO: your code here
-    pass
+    if score >= AUTO_MATCH:
+        return "auto"
+    if score >= REVIEW:
+        return "review"
+    return "unlikely"
 
 
 def match_items(menus: pd.DataFrame, decisions: pd.DataFrame) -> pd.DataFrame:
@@ -144,9 +153,46 @@ def match_items(menus: pd.DataFrame, decisions: pd.DataFrame) -> pd.DataFrame:
     - `return pd.DataFrame(rows, columns=[...the seven columns...])` — naming the
       columns keeps them in order.
     """
-    # TODO: your code here
-    pass
+    # list so far: item names → kind
+    ours = menus[menus["cafe"] == OUR_CAFE]
+    pool = dict(zip(ours["item"], ours["kind"]))
 
+    # owner answers: (cafe, item) → matched_to
+    answers = {}
+    for d in decisions.to_dict("records"):
+        answers[(d["cafe"], d["item"])] = d["matched_to"]
+
+    # every rival item
+    theirs = menus[menus["cafe"] != OUR_CAFE]
+    rivals = theirs[["cafe", "item", "kind"]].drop_duplicates()
+
+    rows = []
+    for cafe, item, kind in rivals.itertuples(index=False):
+        choices = [name for name, k in pool.items() if k == kind]
+        suggestions = top_candidates(item, choices)
+        score = suggestions[0][1] if suggestions else 0
+
+        # owner answer/auto-match/unreviewed
+        if (cafe, item) in answers:
+            status = "owner"
+            matched_to = answers[(cafe, item)]
+            if matched_to == NEW_ITEM:
+                matched_to = item
+        elif score >= AUTO_MATCH:
+            status = "auto"
+            matched_to = suggestions[0][0]
+        else:
+            status = "unreviewed"
+            matched_to = None
+        # grow the list: add the name if it is new
+        if matched_to is not None and matched_to not in pool:
+            pool[matched_to] = kind
+        rows.append({"cafe": cafe, "item": item, "kind": kind, "status": status,
+                     "matched_to": matched_to, "score": score, "suggestions": suggestions})
+
+    return pd.DataFrame(rows, columns=["cafe", "item", "kind", "status",
+                                       "matched_to", "score", "suggestions"])
+    
 
 def record_decision(decisions: pd.DataFrame, cafe: str, item: str,
                     matched_to: str) -> pd.DataFrame:
@@ -162,5 +208,9 @@ def record_decision(decisions: pd.DataFrame, cafe: str, item: str,
     - `pd.concat` them with a one-row DataFrame of the new answer; reset the index.
       (When nothing is kept, the one-row DataFrame is the answer.)
     """
-    # TODO: your code here
-    pass
+    same = (decisions["cafe"] == cafe) & (decisions["item"] == item)
+    kept = decisions[~same]
+    new = pd.DataFrame([{"cafe": cafe, "item": item, "matched_to": matched_to}])
+    if kept.empty:
+        return new
+    return pd.concat([kept, new], ignore_index=True)
