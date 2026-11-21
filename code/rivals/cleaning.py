@@ -35,8 +35,10 @@ def clean_price(text: str) -> float:
     - Remove the dollar sign and any commas with `.replace()`.
     - `.strip()` the spaces, then convert with `float()`.
     """
-    # TODO: your code here
-    pass
+    text = text.replace("$", "")     # step 1: delete the dollar sign
+    text = text.replace(",", "")     # step 2: delete the commas
+    text = text.strip()              # step 3: trim spaces off both ends
+    return float(text)               # step 4: turn "4.75" into 4.75
 
 
 def clean_card_lines(text: str) -> list[str]:
@@ -55,8 +57,15 @@ def clean_card_lines(text: str) -> list[str]:
     - Skip it if every word in it is in NOISE: `all(w in NOISE for w in line.split())`.
     - Otherwise append it to a list, and return the list.
     """
-    # TODO: your code here
-    pass
+    keep = []
+    for line in text.split("\n"):
+        line = line.strip()
+        if line == "":
+            continue                                    # blank line: skip it
+        if all(w in NOISE for w in line.split()):
+            continue                                    # only badges/tags: skip it
+        keep.append(line)
+    return keep
 
 
 def parse_price_line(line: str) -> list[tuple[str, float]]:
@@ -79,8 +88,13 @@ def parse_price_line(line: str) -> list[tuple[str, float]]:
     - Loop over the matches. Use "Each" when size is "", and `clean_price()` on the
       price. Return the list of pairs.
     """
-    # TODO: your code here
-    pass
+    matches = re.findall(r"([SML])?\s*(\$[\d.,]+)", line)
+    pairs = []
+    for size, price in matches:
+        if size == "":
+            size = "Each"
+        pairs.append((size, clean_price(price)))
+    return pairs
 
 
 def card_rows(cafe: str, category: str, card_text: str) -> list[dict]:
@@ -100,5 +114,22 @@ def card_rows(cafe: str, category: str, card_text: str) -> list[dict]:
     - `parse_price_line()` the price line, and build one dict per (size, price)
       pair with the five keys above. Return the list.
     """
-    # TODO: your code here
-    pass
+    lines = clean_card_lines(card_text)
+    item = lines[0]
+
+    price_line = ""
+    for line in lines:
+        if "$" in line:
+            price_line = line
+            break
+
+    rows = []
+    for size, price in parse_price_line(price_line):
+        rows.append({
+            "cafe": cafe,
+            "category": category,
+            "item": item,
+            "size": size,
+            "price": price,
+        })
+    return rows
