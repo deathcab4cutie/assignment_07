@@ -67,5 +67,5 @@ def build_dataset(rival_rows: list[dict]) -> pd.DataFrame:
     in that order; plain index.
     """
     both = pd.concat([load_our_menu(), menus_table(rival_rows)], ignore_index=True)
-    with_kinds = add_kinds(both, pd.read_csv(CATEGORIES_FILE)) #kind column
+    with_kinds = add_kinds(both, pd.read_csv(CATEGORIES_FILE))  # kind column
     return with_kinds[MENU_COLUMNS]

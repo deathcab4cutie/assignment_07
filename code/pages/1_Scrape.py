@@ -64,7 +64,8 @@ st.markdown("Pick the cafés to scrape. Each run replaces the saved dataset.")
 cafes = st.multiselect("Cafés", options=list(CAFES), default=list(CAFES), key="cafes")
 
 if st.button("Scrape", key="scrape") and cafes:
-    with st.spinner("Scraping... a browser visits every café, so this takes a few seconds each."):
+    with st.spinner(
+        "Scraping... a browser visits every café, so this takes a few seconds each."):
         result = run_scraper(cafes)
     if result.returncode == 0:
         st.success(result.stdout.strip().split("\n")[-1])

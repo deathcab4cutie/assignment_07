@@ -28,7 +28,6 @@ from rapidfuzz import fuzz, process
 
 from .settings import (
     AUTO_MATCH,
-    DECISION_COLUMNS,
     FILLER_WORDS,
     NEW_ITEM,
     OUR_CAFE,
@@ -53,10 +52,10 @@ def normalize_name(name: str) -> str:
       with single spaces.
     """
     text = unicodedata.normalize("NFKD", name).encode("ascii", "ignore").decode()
-    text = text.lower() #lowercase
-    text = re.sub(r"[^a-z0-9 ]+", " ", text) #replace anything not a letter/digit
-    words = [w for w in text.split() if w not in FILLER_WORDS] #drop filler words
-    return " ".join(words) 
+    text = text.lower()  # lowercase
+    text = re.sub(r"[^a-z0-9 ]+", " ", text)  # replace anything not a letter/digit
+    words = [w for w in text.split() if w not in FILLER_WORDS]  # drop filler words
+    return " ".join(words)
 
 
 def top_candidates(name: str, choices: list[str], limit: int = 3) -> list[tuple]:
@@ -187,12 +186,19 @@ def match_items(menus: pd.DataFrame, decisions: pd.DataFrame) -> pd.DataFrame:
         # grow the list: add the name if it is new
         if matched_to is not None and matched_to not in pool:
             pool[matched_to] = kind
-        rows.append({"cafe": cafe, "item": item, "kind": kind, "status": status,
-                     "matched_to": matched_to, "score": score, "suggestions": suggestions})
+        rows.append({
+            "cafe": cafe,
+            "item": item,
+            "kind": kind,
+            "status": status,
+            "matched_to": matched_to,
+            "score": score,
+            "suggestions": suggestions,
+        })
 
     return pd.DataFrame(rows, columns=["cafe", "item", "kind", "status",
                                        "matched_to", "score", "suggestions"])
-    
+
 
 def record_decision(decisions: pd.DataFrame, cafe: str, item: str,
                     matched_to: str) -> pd.DataFrame:
